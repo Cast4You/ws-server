@@ -1,0 +1,60 @@
+---
+kind: pipeline
+type: docker
+name: default
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+
+steps:
+  - name: npm install
+    image: node:alpine
+    commands:
+      - node -v
+      - npm -v
+      - npm install --force
+
+  - name: create docker
+    image: plugins/docker
+    settings:
+      repo: registry.victorsmits.com/cast4you/ws
+      registry: registry.victorsmits.com
+      cache_from:  registry.victorsmits.com/cast4you/ws
+      secure: true
+      tags: latest
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+
+
+---
+kind: pipeline
+type: docker
+name: deploy
+
+trigger:
+  event:
+    - promote
+  target:
+    - production
+
+steps:
+  - name: run ansible playbook production
+    image: plugins/ansible
+    environment:
+      REGISTRY_URL:
+        from_secret: docker_url
+      REGISTRY_USER:
+        from_secret: docker_username
+      REGISTRY_PASS:
+        from_secret: docker_password
+    settings:
+      playbook: .ansible/install.yml
+      inventory: .ansible/production
+      user: appli
+      private_key:
+        from_secret: ansible_private_key

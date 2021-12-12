@@ -1,0 +1,71 @@
+- name: Debug images to pull
+  debug:
+    var: docker_images
+
+- name: Set variable folder_deployment
+  set_fact:
+    folder_deployment: "{{ ansible_env.HOME }}/deployment/{{ folder }}"
+  
+- name: Install pip docker package for docker ansible api
+  pip:
+    name: docker-compose
+
+- name: 'Log into private registry'
+  docker_login:
+    registry: "{{ lookup('env', 'REGISTRY_URL') }}"
+    username: "{{ lookup('env', 'REGISTRY_USER') }}"
+    password: "{{ lookup('env', 'REGISTRY_PASS') }}"
+    state: present
+
+- name: Pull docker hub images
+  docker_image:
+    name: "{{ item }}"
+    source: pull
+    force_source: yes
+  when: docker_hub_images is defined
+  with_items: "{{ docker_hub_images }}"
+
+- name: Pull image
+  docker_image:
+    name: "{{ item }}:{{ tag }}"
+    source: pull
+    force_source: yes
+  with_items: "{{ docker_images }}"
+  when: docker_images is defined
+
+- name: Create all network
+  docker_network:
+    name: "{{ item }}"
+  with_items: "{{ networks }}"
+  when: networks is defined
+
+- name: Create all volume
+  docker_volume:
+    name: "{{ item }}"
+  with_items: "{{ volumes }}"
+  when: volumes is defined
+
+- name: Create folder
+  file:
+    path: "{{ folder_deployment }}"
+    state: directory
+
+- name: Copy compose file
+  copy:
+    src: "docker-compose.yml"
+    dest: "{{ folder_deployment }}/docker-compose.yml"
+  register: compose
+
+- name: Start docker compose
+  docker_compose:
+    state: present
+    project_src: "{{ folder_deployment }}"
+    remove_orphans: yes
+
+- name: Prune old artifacts images
+  docker_prune:
+    images: yes
+    images_filters:
+      dangling: true
+    networks: yes
+    volumes: yes

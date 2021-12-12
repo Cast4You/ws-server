@@ -1,0 +1,6 @@
+docker_images:
+  - "registry.victorsmits.com/cast4you/ws"
+
+tag: latest
+
+folder: cast4you-ws

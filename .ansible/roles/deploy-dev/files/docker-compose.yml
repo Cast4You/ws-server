@@ -1,0 +1,8 @@
+version: '2'
+
+services:
+  cast4you:
+    image: registry.victorsmits.com/cast4you/ws
+    restart: always
+    ports:
+      - 40970:4000
